@@ -81,7 +81,6 @@ public class OneOfGenerator : ISourceGenerator
     {
         var className = classDeclaration.Identifier.ValueText;
         var namespaceName = GetNamespace(classDeclaration);
-        var hasExistingConstructor = HasExistingConstructor(classDeclaration, fields);
         var hasDuplicateTypes = HasDuplicateTypes(fields);
 
         var result = new StringBuilder();
@@ -97,27 +96,24 @@ public class OneOfGenerator : ISourceGenerator
         result.AppendLine($"partial class {className}");
         result.AppendLine("{");
 
-        // Generate constructor only if it doesn't exist
-        if (!hasExistingConstructor)
+        // Generate constructor
+        result.AppendLine($"    private {className}(");
+        for (var i = 0; i < fields.Count; i++)
         {
-            result.AppendLine($"    private {className}(");
-            for (var i = 0; i < fields.Count; i++)
-            {
-                var field = fields[i];
-                result.Append($"        {field.TypeName}? {field.Name}");
-                if (i < fields.Count - 1)
-                    result.Append(",");
-                result.AppendLine();
-            }
-            result.AppendLine("    )");
-            result.AppendLine("    {");
-            foreach (var field in fields)
-            {
-                result.AppendLine($"        this.{field.Name} = {field.Name};");
-            }
-            result.AppendLine("    }");
+            var field = fields[i];
+            result.Append($"        {field.TypeName}? {field.Name}");
+            if (i < fields.Count - 1)
+                result.Append(",");
             result.AppendLine();
         }
+        result.AppendLine("    )");
+        result.AppendLine("    {");
+        foreach (var field in fields)
+        {
+            result.AppendLine($"        this.{field.Name} = {field.Name};");
+        }
+        result.AppendLine("    }");
+        result.AppendLine();
 
         // Generate factory methods
         foreach (var field in fields)
@@ -260,29 +256,7 @@ public class OneOfGenerator : ISourceGenerator
         return typeGroups.Any(g => g.Count() > 1);
     }
 
-    private static bool HasExistingConstructor(ClassDeclarationSyntax classDeclaration, List<FieldInfo> fields)
-    {
-        var constructors = classDeclaration.Members.OfType<ConstructorDeclarationSyntax>();
 
-        foreach (var constructor in constructors)
-        {
-            if (constructor.ParameterList.Parameters.Count == fields.Count)
-            {
-                var parameterTypes = constructor.ParameterList.Parameters
-                    .Select(p => p.Type?.ToString())
-                    .ToList();
-
-                var expectedTypes = fields.Select(f => f.TypeName + "?").ToList();
-
-                if (parameterTypes.SequenceEqual(expectedTypes))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
 
     private static string GetNamespace(
         SyntaxNode syntaxNode)
@@ -307,11 +281,11 @@ public class OneOfGenerator : ISourceGenerator
     {
         public string Name { get; }
         public string TypeName { get; }
-
+        
         public FieldInfo(string name, string typeName)
         {
-            this.Name = name;
-            this.TypeName = typeName;
+            Name = name;
+            TypeName = typeName;
         }
     }
 }

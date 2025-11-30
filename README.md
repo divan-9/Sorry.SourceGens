@@ -197,7 +197,7 @@ var envelope = ExtendedEventEnvelope.FromDeleted(new Deleted("1"));
 
 var action = envelope.Map(
     onCreated: c => "CREATE",
-    onUpdated: u => "UPDATE", 
+    onUpdated: u => "UPDATE",
     onDeleted: d => "DELETE"
 );
 // action: "DELETE"
@@ -246,78 +246,15 @@ var result = envelope1.Map(
 // result: "First: Hello"
 ```
 
-## Architecture
-
-The source generator uses a **StringBuilder-based code generation** approach that:
-
-- **Direct generation**: All code is generated directly using StringBuilder for maximum reliability
-- **Zero dependencies**: No external template engines or dependencies to worry about
-- **Fast compilation**: Minimal overhead during build time
-- **Easy maintenance**: Straightforward code generation logic that's easy to understand and modify
 
 ## Installation
 
-### Using Project Reference (Development)
-
-Add the source generator to your project:
-
-```xml
-<ItemGroup>
-    <ProjectReference Include="path/to/Sorry.SourceGens.csproj" />
-    <Analyzer Include="path/to/Sorry.SourceGens/bin/Debug/netstandard2.0/Sorry.SourceGens.dll" />
-</ItemGroup>
-```
-
-### Using NuGet Package
-
-The project includes NuGet packaging configuration. Build the package with:
-
-```bash
-dotnet pack Sorry.SourceGens/Sorry.SourceGens.csproj --configuration Release
-```
-
-Then reference it in your project:
-
+### PackageReference
 ```xml
 <ItemGroup>
     <PackageReference Include="Sorry.SourceGens" Version="1.0.0" />
 </ItemGroup>
 ```
-
-## Requirements
-
-- .NET Standard 2.0 or higher
-- C# 8.0 or higher (for nullable reference types and pattern matching)
-
-## Generated Code Structure
-
-For each `[OneOf]` class, the generator creates:
-
-1. **Private Constructor** (if not already present)
-2. **Factory Methods**: `FromXxx(Type value)` for each variant
-3. **Implicit Operators**: `Type -> OneOfClass` (only when types are unique)
-4. **Map Method**: `T Map<T>(Func<Type1, T>, Func<Type2, T>, ...)`
-5. **Map with Default**: `T Map<T>(Func<T> onDefault, Func<Type1, T>?, ...)`
-6. **Match Method**: `Match(Action<Type1>, Action<Type2>, ...)`
-7. **Match with Default**: `Match(Action onDefault, Action<Type1>?, ...)`
-
-## Testing
-
-Run the comprehensive test suite:
-
-```bash
-dotnet test
-```
-
-Run the example project:
-
-```bash
-dotnet run --project Sorry.SourceGens.Example
-```
-
-## Contributing
-
-This project follows the standard GitHub flow. Please feel free to submit issues and pull requests.
 
 ## License
 

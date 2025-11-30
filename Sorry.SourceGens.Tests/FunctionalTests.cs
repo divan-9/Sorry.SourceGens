@@ -1,4 +1,5 @@
 using Sorry.SourceGens;
+using System.Reflection;
 
 namespace Sorry.SourceGens.Tests;
 
@@ -20,14 +21,6 @@ public partial class ExtendedEventEnvelope
     private readonly Created? created;
     private readonly Updated? updated;
     private readonly Deleted? deleted;
-
-    // Test constructor - for testing exception scenarios only
-    internal ExtendedEventEnvelope(Created? created, Updated? updated, Deleted? deleted)
-    {
-        this.created = created;
-        this.updated = updated;
-        this.deleted = deleted;
-    }
 }
 
 // Test case for duplicate types (should not have implicit operators)
@@ -149,10 +142,18 @@ public class FunctionalTests
     }
 
     [Fact]
-    public void ThrowsWhenNoFieldIsSet()
+    public void ThrowsWhenNoFieldIsSetUsingReflection()
     {
-        // This should not be possible with the generated code, but let's verify the exception handling
-        var envelope = new ExtendedEventEnvelope(null, null, null);
+        // Since we can't create invalid states with the public API,
+        // we test exception handling using reflection to create an invalid state
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type - this is intentional for testing
+        var envelope = (ExtendedEventEnvelope)Activator.CreateInstance(
+            typeof(ExtendedEventEnvelope), 
+            BindingFlags.NonPublic | BindingFlags.Instance, 
+            null, 
+            new object[] { null, null, null }, 
+            null)!;
+#pragma warning restore CS8625
 
         Assert.Throws<InvalidOperationException>(() =>
             envelope.Map(

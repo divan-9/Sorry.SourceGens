@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sorry.SourceGens\Sorry.SourceGens.csproj" />
-    <Analyzer Include="..\Sorry.SourceGens\bin\Debug\netstandard2.0\Sorry.SourceGens.dll" />
+    <Analyzer Include="..\Sorry.SourceGens\bin\Release\netstandard2.0\Sorry.SourceGens.dll" />
   </ItemGroup>
 
 </Project>

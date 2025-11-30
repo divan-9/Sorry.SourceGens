@@ -1,0 +1,25 @@
+name: Build, Test & Publish
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Build and Test
+        run: make test
+
+      - name: Publish to NuGet
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+        run: make ci-publish REF_NAME=${{ github.ref_name }}
+        env:
+          NUGET_KEY: ${{ secrets.NUGET_KEY }}

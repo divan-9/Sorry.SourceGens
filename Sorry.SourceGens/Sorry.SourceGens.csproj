@@ -6,13 +6,19 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <IncludeBuildOutput>false</IncludeBuildOutput>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>Sorry.SourceGens</PackageId>
     <PackageVersion>1.0.0</PackageVersion>
-    <Authors>Sorry.SourceGens</Authors>
+    <Authors>divan-9</Authors>
     <Description>A source generator for OneOf pattern implementation</Description>
+    <PackageProjectUrl>https://github.com/divan-9/Sorry.SourceGen</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/divan-9/Sorry.SourceGen</RepositoryUrl>
+    <PackageTags>source-generator;oneof;discriminated-union;csharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +29,7 @@
   <ItemGroup>
     <None Include="build\*.targets" Pack="true" PackagePath="build" />
     <None Include="bin\Release\netstandard2.0\Sorry.SourceGens.dll" Pack="true" PackagePath="analyzers\dotnet\cs\Sorry.SourceGens.dll" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
