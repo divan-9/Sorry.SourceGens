@@ -1,3 +1,5 @@
+namespace Sorry.SourceGens;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -5,17 +7,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Sorry.SourceGens;
-
 [Generator]
 public class OneOfGenerator : ISourceGenerator
 {
-    public void Initialize(GeneratorInitializationContext context)
+    public void Initialize(
+        GeneratorInitializationContext context)
     {
         context.RegisterForSyntaxNotifications(() => new OneOfSyntaxReceiver());
     }
 
-    public void Execute(GeneratorExecutionContext context)
+    public void Execute(
+        GeneratorExecutionContext context)
     {
         if (context.SyntaxReceiver is not OneOfSyntaxReceiver receiver)
             return;
@@ -49,7 +51,8 @@ public class OneOfGenerator : ISourceGenerator
         }
     }
 
-    private static List<FieldInfo> GetNullableFields(ClassDeclarationSyntax classDeclaration)
+    private static List<FieldInfo> GetNullableFields(
+        ClassDeclarationSyntax classDeclaration)
     {
         var fields = new List<FieldInfo>();
 
@@ -73,129 +76,194 @@ public class OneOfGenerator : ISourceGenerator
         return fields;
     }
 
-    private static string GenerateOneOfImplementation(ClassDeclarationSyntax classDeclaration, List<FieldInfo> fields)
+    private static string GenerateOneOfImplementation(
+        ClassDeclarationSyntax classDeclaration, List<FieldInfo> fields)
     {
         var className = classDeclaration.Identifier.ValueText;
         var namespaceName = GetNamespace(classDeclaration);
         var hasExistingConstructor = HasExistingConstructor(classDeclaration, fields);
+        var hasDuplicateTypes = HasDuplicateTypes(fields);
 
-        var sb = new StringBuilder();
-        
-        sb.AppendLine("#nullable enable");
-        sb.AppendLine();
+        var result = new StringBuilder();
+        result.AppendLine("#nullable enable");
 
         if (!string.IsNullOrEmpty(namespaceName))
         {
-            sb.AppendLine($"namespace {namespaceName};");
-            sb.AppendLine();
+            result.AppendLine();
+            result.AppendLine($"namespace {namespaceName};");
         }
 
-        sb.AppendLine($"partial class {className}");
-        sb.AppendLine("{");
+        result.AppendLine();
+        result.AppendLine($"partial class {className}");
+        result.AppendLine("{");
 
         // Generate constructor only if it doesn't exist
         if (!hasExistingConstructor)
         {
-            sb.AppendLine($"    private {className}(");
-            for (int i = 0; i < fields.Count; i++)
+            result.AppendLine($"    private {className}(");
+            for (var i = 0; i < fields.Count; i++)
             {
                 var field = fields[i];
-                sb.Append($"        {field.TypeName}? {field.Name}");
+                result.Append($"        {field.TypeName}? {field.Name}");
                 if (i < fields.Count - 1)
-                    sb.Append(",");
-                sb.AppendLine();
+                    result.Append(",");
+                result.AppendLine();
             }
-            sb.AppendLine("    )");
-            sb.AppendLine("    {");
+            result.AppendLine("    )");
+            result.AppendLine("    {");
             foreach (var field in fields)
             {
-                sb.AppendLine($"        this.{field.Name} = {field.Name};");
+                result.AppendLine($"        this.{field.Name} = {field.Name};");
             }
-            sb.AppendLine("    }");
-            sb.AppendLine();
+            result.AppendLine("    }");
+            result.AppendLine();
         }
 
         // Generate factory methods
         foreach (var field in fields)
         {
             var methodName = ToPascalCase(field.Name);
-            sb.AppendLine($"    public static {className} From{methodName}({field.TypeName} {field.Name}) =>");
-            sb.AppendLine($"        new {className}(");
+            result.AppendLine($"    public static {className} From{methodName}({field.TypeName} {field.Name}) =>");
+            result.AppendLine($"        new {className}(");
             for (int i = 0; i < fields.Count; i++)
             {
                 var f = fields[i];
                 var value = f.Name == field.Name ? f.Name : "null";
-                sb.Append($"            {f.Name}: {value}");
+                result.Append($"            {f.Name}: {value}");
                 if (i < fields.Count - 1)
-                    sb.Append(",");
-                sb.AppendLine();
+                    result.Append(",");
+                result.AppendLine();
             }
-            sb.AppendLine("        );");
-            sb.AppendLine();
+            result.AppendLine("        );");
+            result.AppendLine();
         }
 
-        // Generate implicit operators
-        foreach (var field in fields)
+        // Generate implicit operators only if there are no duplicate types
+        if (!hasDuplicateTypes)
         {
-            sb.AppendLine($"    public static implicit operator {className}({field.TypeName} {field.Name}) => From{ToPascalCase(field.Name)}({field.Name});");
+            foreach (var field in fields)
+            {
+                result.AppendLine($"    public static implicit operator {className}({field.TypeName} {field.Name}) => From{ToPascalCase(field.Name)}({field.Name});");
+            }
+            result.AppendLine();
         }
-        sb.AppendLine();
 
-        // Generate Map method
-        sb.AppendLine("    public T Map<T>(");
+        // Generate original Map method
+        result.AppendLine("    public T Map<T>(");
         for (int i = 0; i < fields.Count; i++)
         {
             var field = fields[i];
-            sb.Append($"        Func<{field.TypeName}, T> on{ToPascalCase(field.Name)}");
+            result.Append($"        Func<{field.TypeName}, T> on{ToPascalCase(field.Name)}");
             if (i < fields.Count - 1)
-                sb.Append(",");
-            sb.AppendLine();
+                result.Append(",");
+            result.AppendLine();
         }
-        sb.AppendLine("    )");
-        sb.AppendLine("    {");
+        result.AppendLine("    )");
+        result.AppendLine("    {");
         foreach (var field in fields)
         {
-            sb.AppendLine($"        if (this.{field.Name} is not null)");
-            sb.AppendLine($"        {{");
-            sb.AppendLine($"            return on{ToPascalCase(field.Name)}(this.{field.Name});");
-            sb.AppendLine($"        }}");
+            result.AppendLine($"        if (this.{field.Name} is not null)");
+            result.AppendLine($"        {{");
+            result.AppendLine($"            return on{ToPascalCase(field.Name)}(this.{field.Name});");
+            result.AppendLine($"        }}");
         }
-        sb.AppendLine($"        throw new InvalidOperationException(\"{className} must contain one of: {string.Join(", ", fields.Select(f => f.TypeName))}\");");
-        sb.AppendLine("    }");
-        sb.AppendLine();
+        result.AppendLine($"        throw new InvalidOperationException(\"{className} must contain one of: {string.Join(", ", fields.Select(f => f.TypeName))}\");");
+        result.AppendLine("    }");
+        result.AppendLine();
 
-        // Generate Match method
-        sb.AppendLine("    public void Match(");
+        // Generate Map method with default case
+        result.AppendLine("    public T Map<T>(");
+        result.Append("        Func<T> onDefault");
+        if (fields.Count > 0)
+            result.Append(",");
+        result.AppendLine();
         for (int i = 0; i < fields.Count; i++)
         {
             var field = fields[i];
-            sb.Append($"        Action<{field.TypeName}> on{ToPascalCase(field.Name)}");
+            result.Append($"        Func<{field.TypeName}, T>? on{ToPascalCase(field.Name)} = null");
             if (i < fields.Count - 1)
-                sb.Append(",");
-            sb.AppendLine();
+                result.Append(",");
+            result.AppendLine();
         }
-        sb.AppendLine("    )");
-        sb.AppendLine("    {");
+        result.AppendLine("    )");
+        result.AppendLine("    {");
         foreach (var field in fields)
         {
-            sb.AppendLine($"        if (this.{field.Name} is not null)");
-            sb.AppendLine($"        {{");
-            sb.AppendLine($"            on{ToPascalCase(field.Name)}(this.{field.Name});");
-            sb.AppendLine($"            return;");
-            sb.AppendLine($"        }}");
+            result.AppendLine($"        if (this.{field.Name} is not null && on{ToPascalCase(field.Name)} is not null)");
+            result.AppendLine($"        {{");
+            result.AppendLine($"            return on{ToPascalCase(field.Name)}(this.{field.Name});");
+            result.AppendLine($"        }}");
         }
-        sb.AppendLine($"        throw new InvalidOperationException(\"{className} must contain one of: {string.Join(", ", fields.Select(f => f.TypeName))}\");");
-        sb.AppendLine("    }");
+        result.AppendLine("        return onDefault();");
+        result.AppendLine("    }");
+        result.AppendLine();
 
-        sb.AppendLine("}");
+        // Generate original Match method
+        result.AppendLine("    public void Match(");
+        for (int i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            result.Append($"        Action<{field.TypeName}> on{ToPascalCase(field.Name)}");
+            if (i < fields.Count - 1)
+                result.Append(",");
+            result.AppendLine();
+        }
+        result.AppendLine("    )");
+        result.AppendLine("    {");
+        foreach (var field in fields)
+        {
+            result.AppendLine($"        if (this.{field.Name} is not null)");
+            result.AppendLine($"        {{");
+            result.AppendLine($"            on{ToPascalCase(field.Name)}(this.{field.Name});");
+            result.AppendLine($"            return;");
+            result.AppendLine($"        }}");
+        }
+        result.AppendLine($"        throw new InvalidOperationException(\"{className} must contain one of: {string.Join(", ", fields.Select(f => f.TypeName))}\");");
+        result.AppendLine("    }");
+        result.AppendLine();
 
-        return sb.ToString();
+        // Generate Match method with default case
+        result.AppendLine("    public void Match(");
+        result.Append("        Action onDefault");
+        if (fields.Count > 0)
+            result.Append(",");
+        result.AppendLine();
+        for (int i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            result.Append($"        Action<{field.TypeName}>? on{ToPascalCase(field.Name)} = null");
+            if (i < fields.Count - 1)
+                result.Append(",");
+            result.AppendLine();
+        }
+        result.AppendLine("    )");
+        result.AppendLine("    {");
+        foreach (var field in fields)
+        {
+            result.AppendLine($"        if (this.{field.Name} is not null && on{ToPascalCase(field.Name)} is not null)");
+            result.AppendLine($"        {{");
+            result.AppendLine($"            on{ToPascalCase(field.Name)}(this.{field.Name});");
+            result.AppendLine($"            return;");
+            result.AppendLine($"        }}");
+        }
+        result.AppendLine("        onDefault();");
+        result.AppendLine("    }");
+
+        result.AppendLine("}");
+
+        return result.ToString();
+    }
+
+    private static bool HasDuplicateTypes(List<FieldInfo> fields)
+    {
+        var typeGroups = fields.GroupBy(f => f.TypeName);
+        return typeGroups.Any(g => g.Count() > 1);
     }
 
     private static bool HasExistingConstructor(ClassDeclarationSyntax classDeclaration, List<FieldInfo> fields)
     {
         var constructors = classDeclaration.Members.OfType<ConstructorDeclarationSyntax>();
-        
+
         foreach (var constructor in constructors)
         {
             if (constructor.ParameterList.Parameters.Count == fields.Count)
@@ -203,20 +271,21 @@ public class OneOfGenerator : ISourceGenerator
                 var parameterTypes = constructor.ParameterList.Parameters
                     .Select(p => p.Type?.ToString())
                     .ToList();
-                
+
                 var expectedTypes = fields.Select(f => f.TypeName + "?").ToList();
-                
+
                 if (parameterTypes.SequenceEqual(expectedTypes))
                 {
                     return true;
                 }
             }
         }
-        
+
         return false;
     }
 
-    private static string GetNamespace(SyntaxNode syntaxNode)
+    private static string GetNamespace(
+        SyntaxNode syntaxNode)
     {
         var namespaceDeclaration = syntaxNode.Ancestors()
             .OfType<BaseNamespaceDeclarationSyntax>()
@@ -225,11 +294,12 @@ public class OneOfGenerator : ISourceGenerator
         return namespaceDeclaration?.Name?.ToString() ?? "";
     }
 
-    private static string ToPascalCase(string input)
+    private static string ToPascalCase(
+        string input)
     {
         if (string.IsNullOrEmpty(input))
             return input;
-        
+
         return char.ToUpperInvariant(input[0]) + input.Substring(1);
     }
 
@@ -240,23 +310,8 @@ public class OneOfGenerator : ISourceGenerator
 
         public FieldInfo(string name, string typeName)
         {
-            Name = name;
-            TypeName = typeName;
-        }
-    }
-}
-
-internal class OneOfSyntaxReceiver : ISyntaxReceiver
-{
-    public List<ClassDeclarationSyntax> CandidateClasses { get; } = new();
-
-    public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-    {
-        if (syntaxNode is ClassDeclarationSyntax classDeclaration &&
-            classDeclaration.Modifiers.Any(SyntaxKind.PartialKeyword) &&
-            classDeclaration.AttributeLists.Count > 0)
-        {
-            CandidateClasses.Add(classDeclaration);
+            this.Name = name;
+            this.TypeName = typeName;
         }
     }
 }

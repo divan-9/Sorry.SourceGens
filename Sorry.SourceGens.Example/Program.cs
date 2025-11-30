@@ -1,4 +1,4 @@
-﻿using Sorry.SourceGens;
+using Sorry.SourceGens;
 
 // Define event types
 public record Created(string Id, string Name);
@@ -39,7 +39,7 @@ class Program
     static void DemoBasicOneOf()
     {
         Console.WriteLine("📧 Basic OneOf Demo (Created/Updated)");
-        
+
         var createdEvent = new Created("1", "New Product");
         var updatedEvent = new Updated("2", "Updated Product", DateTime.Now);
 
@@ -61,7 +61,7 @@ class Program
     static void DemoExtendedOneOf()
     {
         Console.WriteLine("🗂️  Extended OneOf Demo (Created/Updated/Deleted)");
-        
+
         var events = new ExtendedEventEnvelope[]
         {
             ExtendedEventEnvelope.FromCreated(new Created("1", "Product A")),
@@ -78,7 +78,7 @@ class Program
     static void DemoFunctionalPatternMatching()
     {
         Console.WriteLine("🔄 Functional Pattern Matching Demo");
-        
+
         var events = new ExtendedEventEnvelope[]
         {
             ExtendedEventEnvelope.FromCreated(new Created("100", "Laptop")),
@@ -87,7 +87,7 @@ class Program
         };
 
         var summary = events.Select(GetEventSummary).ToArray();
-        
+
         Console.WriteLine($"📊 Event Summary: [{string.Join(", ", summary)}]");
     }
 

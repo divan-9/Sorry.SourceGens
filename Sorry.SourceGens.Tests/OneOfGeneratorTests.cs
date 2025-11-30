@@ -112,6 +112,81 @@ namespace TestNamespace
         Assert.Null(oneOfGeneratedFile);
     }
 
+    [Fact]
+    public void DoesNotGenerateImplicitOperatorsForDuplicateTypes()
+    {
+        var source = @"
+using Sorry.SourceGens;
+
+namespace TestNamespace
+{
+    [OneOf]
+    public partial class DuplicateTypeEnvelope
+    {
+        private readonly string? firstString;
+        private readonly string? secondString;
+    }
+}";
+
+        var (compilation, diagnostics) = GetGeneratedOutput(source);
+        
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        
+        var generatedFile = compilation.SyntaxTrees.FirstOrDefault(tree => 
+            tree.ToString().Contains("FromFirstString") && 
+            tree.ToString().Contains("FromSecondString"));
+        
+        Assert.NotNull(generatedFile);
+        
+        var generatedCode = generatedFile.ToString();
+        
+        Assert.Contains("FromFirstString", generatedCode);
+        Assert.Contains("FromSecondString", generatedCode);
+        Assert.Contains("public T Map<T>", generatedCode);
+        Assert.Contains("public void Match", generatedCode);
+        
+        // Should NOT contain implicit operators for duplicate types
+        Assert.DoesNotContain("implicit operator", generatedCode);
+    }
+
+    [Fact]
+    public void GeneratesMapAndMatchOverloadsWithDefaults()
+    {
+        var source = @"
+using Sorry.SourceGens;
+
+namespace TestNamespace
+{
+    public class Created { }
+    public class Updated { }
+
+    [OneOf]
+    public partial class EventEnvelope
+    {
+        private readonly Created? created;
+        private readonly Updated? updated;
+    }
+}";
+
+        var (compilation, diagnostics) = GetGeneratedOutput(source);
+        
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        
+        var generatedFile = compilation.SyntaxTrees.FirstOrDefault(tree => 
+            tree.ToString().Contains("FromCreated") && 
+            tree.ToString().Contains("FromUpdated"));
+        
+        Assert.NotNull(generatedFile);
+        
+        var generatedCode = generatedFile.ToString();
+        
+        // Should have both regular and default overloads
+        Assert.Contains("public T Map<T>(", generatedCode);
+        Assert.Contains("Func<T> onDefault", generatedCode);
+        Assert.Contains("Action onDefault", generatedCode);
+        Assert.Contains("= null", generatedCode); // Optional parameters
+    }
+
     private static (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) GetGeneratedOutput(string source)
     {
         var attributeSource = @"

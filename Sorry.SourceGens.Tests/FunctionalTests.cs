@@ -30,6 +30,17 @@ public partial class ExtendedEventEnvelope
     }
 }
 
+// Test case for duplicate types (should not have implicit operators)
+public record FirstStringEvent(string Value);
+public record SecondStringEvent(string Value);
+
+[OneOf]
+public partial class DuplicateTypeEnvelope
+{
+    private readonly string? firstString;
+    private readonly string? secondString;
+}
+
 public class FunctionalTests
 {
     [Fact]
@@ -158,5 +169,73 @@ public class FunctionalTests
                 onDeleted: d => { }
             )
         );
+    }
+
+    [Fact]
+    public void CanUseMapWithDefaultCase()
+    {
+        var createdEvent = new Created("1", "Test");
+        var envelope = EventEnvelope.FromCreated(createdEvent);
+
+        // Test with specific handler
+        var result1 = envelope.Map(
+            onDefault: () => "DEFAULT",
+            onCreated: c => $"Created: {c.Name}",
+            onUpdated: null // Optional parameter
+        );
+        Assert.Equal("Created: Test", result1);
+
+        // Test with only default handler
+        var result2 = envelope.Map(
+            onDefault: () => "DEFAULT"
+        );
+        Assert.Equal("DEFAULT", result2);
+    }
+
+    [Fact]
+    public void CanUseMatchWithDefaultCase()
+    {
+        var createdEvent = new Created("1", "Test");
+        var envelope = EventEnvelope.FromCreated(createdEvent);
+        var result = "";
+
+        // Test with specific handler
+        envelope.Match(
+            onDefault: () => result = "DEFAULT",
+            onCreated: c => result = $"Created: {c.Name}",
+            onUpdated: null // Optional parameter
+        );
+        Assert.Equal("Created: Test", result);
+
+        // Test with only default handler
+        result = "";
+        envelope.Match(
+            onDefault: () => result = "DEFAULT"
+        );
+        Assert.Equal("DEFAULT", result);
+    }
+
+    [Fact]
+    public void DuplicateTypesDoNotHaveImplicitOperators()
+    {
+        // This test verifies that when there are duplicate types,
+        // implicit operators are not generated (which would cause compilation errors)
+        var envelope = DuplicateTypeEnvelope.FromFirstString("test1");
+        
+        var result = envelope.Map(
+            onFirstString: s => $"First: {s}",
+            onSecondString: s => $"Second: {s}"
+        );
+        
+        Assert.Equal("First: test1", result);
+
+        // Verify we can still use factory methods
+        var envelope2 = DuplicateTypeEnvelope.FromSecondString("test2");
+        var result2 = envelope2.Map(
+            onFirstString: s => $"First: {s}",
+            onSecondString: s => $"Second: {s}"
+        );
+        
+        Assert.Equal("Second: test2", result2);
     }
 }
