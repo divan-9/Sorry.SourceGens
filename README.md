@@ -263,8 +263,8 @@ To use the source generator in your project, you need both packages:
 
 ```xml
 <ItemGroup>
-    <PackageReference Include="Sorry.SourceGens.Attributes" Version="1.0.1" />
-    <PackageReference Include="Sorry.SourceGens" Version="1.0.1" />
+    <PackageReference Include="Sorry.SourceGens.Attributes" Version="1.0.2" />
+    <PackageReference Include="Sorry.SourceGens" Version="1.0.2" />
 </ItemGroup>
 ```
 
