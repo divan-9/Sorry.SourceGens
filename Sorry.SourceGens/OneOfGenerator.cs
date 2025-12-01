@@ -84,6 +84,7 @@ public class OneOfGenerator : ISourceGenerator
         var hasDuplicateTypes = HasDuplicateTypes(fields);
 
         var result = new StringBuilder();
+        result.AppendLine("#pragma warning disable");
         result.AppendLine("#nullable enable");
         result.AppendLine("using System;");
 
@@ -94,7 +95,7 @@ public class OneOfGenerator : ISourceGenerator
         }
 
         result.AppendLine();
-        result.AppendLine($"partial class {className}");
+        result.AppendLine($"partial class {className} : IEquatable<{className}>");
         result.AppendLine("{");
 
         // Generate constructor
@@ -245,6 +246,85 @@ public class OneOfGenerator : ISourceGenerator
         }
         result.AppendLine("        onDefault();");
         result.AppendLine("    }");
+        result.AppendLine();
+
+        // Generate Equals method
+        result.AppendLine("    public override bool Equals(object? obj)");
+        result.AppendLine("    {");
+        result.AppendLine($"        if (obj is not {className} other) return false;");
+        result.AppendLine("        return Equals(other);");
+        result.AppendLine("    }");
+        result.AppendLine();
+
+        // Generate typed Equals method
+        result.AppendLine($"    public bool Equals({className}? other)");
+        result.AppendLine("    {");
+        result.AppendLine("        if (other is null) return false;");
+        result.AppendLine("        if (ReferenceEquals(this, other)) return true;");
+        result.AppendLine();
+        
+        // Generate equality check for each possible state
+        result.Append("        return ");
+        for (int i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            result.Append("(");
+            
+            // First condition: this field is set and equals other's field
+            result.Append($"this.{field.Name} is not null && other.{field.Name} is not null && this.{field.Name}.Equals(other.{field.Name})");
+            
+            // Additional conditions: all other fields are null in both objects
+            for (int j = 0; j < fields.Count; j++)
+            {
+                if (j != i)
+                {
+                    var f = fields[j];
+                    result.Append($" && this.{f.Name} is null && other.{f.Name} is null");
+                }
+            }
+            
+            result.Append(")");
+            
+            if (i < fields.Count - 1)
+            {
+                result.AppendLine(" ||");
+                result.Append("               ");
+            }
+            else
+            {
+                result.AppendLine(";");
+            }
+        }
+        result.AppendLine("    }");
+        result.AppendLine();
+
+        // Generate GetHashCode method
+        result.AppendLine("    public override int GetHashCode()");
+        result.AppendLine("    {");
+        result.AppendLine("        return HashCode.Combine(");
+        for (int i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            result.Append($"            this.{field.Name}?.GetHashCode() ?? 0");
+            if (i < fields.Count - 1)
+                result.Append(",");
+            result.AppendLine();
+        }
+        result.AppendLine("        );");
+        result.AppendLine("    }");
+        result.AppendLine();
+
+        // Generate equality operators
+        result.AppendLine($"    public static bool operator ==({className}? left, {className}? right)");
+        result.AppendLine("    {");
+        result.AppendLine("        return ReferenceEquals(left, right) || (left?.Equals(right) ?? false);");
+        result.AppendLine("    }");
+        result.AppendLine();
+
+        result.AppendLine($"    public static bool operator !=({className}? left, {className}? right)");
+        result.AppendLine("    {");
+        result.AppendLine("        return !(left == right);");
+        result.AppendLine("    }");
 
         result.AppendLine("}");
 
@@ -282,8 +362,8 @@ public class OneOfGenerator : ISourceGenerator
     {
         public FieldInfo(string name, string typeName)
         {
-            Name = name;
-            TypeName = typeName;
+            this.Name = name;
+            this.TypeName = typeName;
         }
 
         public string Name { get; }

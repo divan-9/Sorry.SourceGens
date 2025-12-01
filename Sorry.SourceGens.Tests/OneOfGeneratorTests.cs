@@ -187,6 +187,91 @@ namespace TestNamespace
         Assert.Contains("= null", generatedCode); // Optional parameters
     }
 
+    [Fact]
+    public void GeneratesEqualityMembers()
+    {
+        var source = @"
+using Sorry.SourceGens;
+
+namespace TestNamespace
+{
+    public class Created { }
+    public class Updated { }
+
+    [OneOf]
+    public partial class EventEnvelope
+    {
+        private readonly Created? created;
+        private readonly Updated? updated;
+    }
+}";
+
+        var (compilation, diagnostics) = GetGeneratedOutput(source);
+        
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        
+        var generatedFile = compilation.SyntaxTrees.FirstOrDefault(tree => 
+            tree.ToString().Contains("FromCreated") && 
+            tree.ToString().Contains("FromUpdated"));
+        
+        Assert.NotNull(generatedFile);
+        
+        var generatedCode = generatedFile.ToString();
+        
+        // Should implement IEquatable<T>
+        Assert.Contains("IEquatable<EventEnvelope>", generatedCode);
+        
+        // Should have equality methods
+        Assert.Contains("public override bool Equals(object? obj)", generatedCode);
+        Assert.Contains("public bool Equals(EventEnvelope? other)", generatedCode);
+        Assert.Contains("public override int GetHashCode()", generatedCode);
+        
+        // Should have equality operators
+        Assert.Contains("public static bool operator ==(EventEnvelope? left, EventEnvelope? right)", generatedCode);
+        Assert.Contains("public static bool operator !=(EventEnvelope? left, EventEnvelope? right)", generatedCode);
+        
+        // Should use HashCode.Combine
+        Assert.Contains("HashCode.Combine(", generatedCode);
+    }
+
+    [Fact]
+    public void GeneratesWarningSuppressionDirective()
+    {
+        var source = @"
+using Sorry.SourceGens;
+
+namespace TestNamespace
+{
+    public class Created { }
+    public class Updated { }
+
+    [OneOf]
+    public partial class EventEnvelope
+    {
+        private readonly Created? created;
+        private readonly Updated? updated;
+    }
+}";
+
+        var (compilation, diagnostics) = GetGeneratedOutput(source);
+        
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        
+        var generatedFile = compilation.SyntaxTrees.FirstOrDefault(tree => 
+            tree.ToString().Contains("FromCreated") && 
+            tree.ToString().Contains("FromUpdated"));
+        
+        Assert.NotNull(generatedFile);
+        
+        var generatedCode = generatedFile.ToString();
+        
+        // Should start with warning suppression
+        Assert.Contains("#pragma warning disable", generatedCode);
+        
+        // Should include necessary using statements
+        Assert.Contains("using System;", generatedCode);
+    }
+
     private static (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) GetGeneratedOutput(string source)
     {
         var attributeSource = @"

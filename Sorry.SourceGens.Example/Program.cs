@@ -36,6 +36,8 @@ class Program
         DemoExtendedOneOf();
         Console.WriteLine();
         DemoFunctionalPatternMatching();
+        Console.WriteLine();
+        DemoEquality();
     }
 
     static void DemoBasicOneOf()
@@ -117,5 +119,27 @@ class Program
             onUpdated: _ => "U",
             onDeleted: _ => "D"
         );
+    }
+
+    static void DemoEquality()
+    {
+        Console.WriteLine("⚖️  Equality Demo");
+
+        var created1 = new Created("1", "Product A");
+        var created2 = new Created("1", "Product A");
+        var created3 = new Created("2", "Product B");
+        var updated1 = new Updated("1", "Product A", DateTime.Now);
+
+        var envelope1 = EventEnvelope.FromCreated(created1);
+        var envelope2 = EventEnvelope.FromCreated(created2);
+        var envelope3 = EventEnvelope.FromCreated(created3);
+        var envelope4 = EventEnvelope.FromUpdated(updated1);
+
+        Console.WriteLine($"✅ Same Created objects: {envelope1.Equals(envelope2)} (should be True)");
+        Console.WriteLine($"❌ Different Created objects: {envelope1.Equals(envelope3)} (should be False)");
+        Console.WriteLine($"❌ Created vs Updated: {envelope1.Equals(envelope4)} (should be False)");
+        Console.WriteLine($"✅ == operator: {envelope1 == envelope2} (should be True)");
+        Console.WriteLine($"✅ != operator: {envelope1 != envelope3} (should be True)");
+        Console.WriteLine($"✅ HashCode consistency: {envelope1.GetHashCode() == envelope2.GetHashCode()} (should be True)");
     }
 }
